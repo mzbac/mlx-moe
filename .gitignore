@@ -162,3 +162,7 @@ cython_debug/
 models
 mlx_moe
 mlx_model
+lora_fused_model
+data
+
+adapters.npz

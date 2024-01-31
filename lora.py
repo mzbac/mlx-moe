@@ -1,11 +1,10 @@
 import random
 from typing import Tuple
-from mlx_lm import load
 from mlx_lm.lora import LoRALinear
 from mlx.utils import tree_flatten
 from mlx_lm.tuner.trainer import TrainingArgs, train
 import mlx.optimizers as optim
-
+from utils import load
 import json
 from pathlib import Path
 
@@ -29,8 +28,7 @@ def load_dataset(path: str, train_split: float = 0.8) -> Tuple[Dataset, Dataset]
         file_content = fid.read()
         data = json.loads(file_content)
 
-    # Combine instruction and output into the desired format
-    combined_data = [f'[INST] {{ {item["instruction"]} }} [/INST] [INST] {{ {item["output"]} }} [/INST]' for item in data]
+    combined_data = [f'[INST] {{ {item["instruction"]} }} [/INST] {{ {item["output"]} }} ' for item in data]
 
     random.shuffle(combined_data)
 
@@ -47,12 +45,12 @@ def load_dataset(path: str, train_split: float = 0.8) -> Tuple[Dataset, Dataset]
 def main():
     train_dataset_path = "./data/WizardLM/WizardLM_evol_instruct_70k/alpaca_evol_instruct_70k.json"
 
-    model_path = "../mlx-moe/mlx_model/"
+    model_path = "./mlx_model"
 
     model, tokenizer = load(model_path)
 
     train_dst, valid_dst = load_dataset(train_dataset_path)
-    # train_dst, valid_dst = train_dst[:1], valid_dst[:1]     
+
     model.freeze()
     for l in model.model.layers:
         l.self_attn.q_proj = LoRALinear.from_linear(
@@ -61,7 +59,6 @@ def main():
         l.self_attn.v_proj = LoRALinear.from_linear(
             l.self_attn.v_proj, r=16, lora_alpha=32, lora_dropout=0.1
         )
-        # l.self_attn.o_proj = LoRALinear.from_linear(l.self_attn.o_proj)
         if hasattr(l, "block_sparse_moe"):
             l.block_sparse_moe.gate = LoRALinear.from_linear(
                 l.block_sparse_moe.gate, r=16, lora_alpha=32, lora_dropout=0.1
