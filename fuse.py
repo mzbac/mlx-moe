@@ -3,10 +3,9 @@ import glob
 import json
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Union
 
 from mlx.utils import tree_flatten, tree_unflatten
-
+import mlx.core as mx
 from mlx_lm.tuner.lora import LoRALinear
 from mlx_lm.tuner.utils import apply_lora_layers, dequantize
 from mlx_lm.utils import get_model_path, save_weights, upload_to_hub
@@ -60,7 +59,8 @@ def main() -> None:
 
     model.freeze()
     model = apply_lora_layers(model, args.adapter_file)
-
+    adapters = list(mx.load(args.adapter_file).items())
+    model.update(tree_unflatten(adapters))
     fused_linears = [
         (n, m.to_linear())
         for n, m in model.named_modules()

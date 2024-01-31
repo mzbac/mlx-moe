@@ -6,7 +6,7 @@ from typing import Dict, Tuple
 import mlx.core as mx
 import mlx.nn as nn
 from mlx_lm.utils import get_model_path
-from mlx_lm.tuner.utils import apply_lora_layers
+from mlx_lm.tuner.utils import apply_lora_layers, tree_unflatten
 from transformers import AutoConfig, AutoTokenizer, PreTrainedTokenizer
 from mixral import ModelArgs, Model
 
@@ -29,6 +29,9 @@ def load(
     model = load_model(model_path)
     if adapter_file is not None:
         model = apply_lora_layers(model, adapter_file)
+        adapters = list(mx.load(adapter_file).items())
+        model.update(tree_unflatten(adapters))
+
         model.eval()
     tokenizer = AutoTokenizer.from_pretrained(model_path, **tokenizer_config)
     return model, tokenizer
