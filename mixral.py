@@ -174,9 +174,7 @@ class MixtralSparseMoeBlock(nn.Module):
             noise = mx.random.normal(shape=noise_logits.shape, dtype=noise_logits.dtype) * softplus(noise_logits)                           
             gates = gates + noise
 
-        inds = mx.stop_gradient(
-            mx.argpartition(-gates, kth=ne, axis=-1)[:, :ne]
-        )  # TODO remove it once we figure out how to fine tune TopK in MOE
+        inds = mx.argpartition(-gates, kth=ne, axis=-1)[:, :ne]
 
         scores = mx.softmax(
             mx.take_along_axis(gates, inds, axis=-1).astype(mx.float32),

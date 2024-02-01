@@ -24,7 +24,6 @@ def setup_arg_parser():
     parser.add_argument(
         "--adapter-file",
         type=str,
-        default="adapters.npz",
         help="The path to the adapter file.",
     )
     parser.add_argument(

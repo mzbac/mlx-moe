@@ -61,6 +61,7 @@ def main() -> None:
     model = apply_lora_layers(model, args.adapter_file)
     adapters = list(mx.load(args.adapter_file).items())
     model.update(tree_unflatten(adapters))
+    
     fused_linears = [
         (n, m.to_linear())
         for n, m in model.named_modules()

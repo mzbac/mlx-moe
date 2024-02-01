@@ -31,7 +31,6 @@ def load(
         model = apply_lora_layers(model, adapter_file)
         adapters = list(mx.load(adapter_file).items())
         model.update(tree_unflatten(adapters))
-
         model.eval()
     tokenizer = AutoTokenizer.from_pretrained(model_path, **tokenizer_config)
     return model, tokenizer

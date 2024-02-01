@@ -14,6 +14,7 @@ EXPERT_MODEL_PATHS = [
 ]
 MLX_SAVE_PATH = Path("mlx_moe")
 
+
 def load_config(path):
     try:
         with open(path, "r") as file:
@@ -67,7 +68,12 @@ def main():
 
     # Update configuration
     config.update(
-        {"num_local_experts": 4, "num_experts_per_tok": 2, "model_type": "mixtral"}
+        {
+            "num_local_experts": 4,
+            "num_experts_per_tok": 2,
+            "model_type": "mixtral",
+            "architectures": ["MixtralForCausalLM"],
+        }
     )
 
     weights = update_weights(expert_weights, config)
