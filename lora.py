@@ -61,7 +61,7 @@ def main():
         )
         if hasattr(l, "block_sparse_moe"):
             l.block_sparse_moe.gate = LoRALinear.from_linear(
-                l.block_sparse_moe.gate, r=1024, lora_alpha=2048  # Adjust 'r' and 'lora_alpha' to effectively update the gate weights
+                l.block_sparse_moe.gate, r=16, lora_alpha=32  # Adjust 'r' and 'lora_alpha' to effectively update the gate weights
             )
 
     p = sum(v.size for _, v in tree_flatten(model.parameters())) / 10**6
