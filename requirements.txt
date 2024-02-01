@@ -1,4 +1,4 @@
-mlx
-mlx-lm
+mlx>=0.1.0
+mlx-lm>=0.0.6
 numpy
 transformers
