@@ -144,6 +144,7 @@ class MixtralBLockSparseTop2MLP(nn.Module):
         current_hidden_states = self.w2(current_hidden_states)
         return current_hidden_states
 
+
 class MixtralSparseMoeBlock(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
@@ -166,7 +167,6 @@ class MixtralSparseMoeBlock(nn.Module):
         x = x.reshape(-1, x.shape[-1])
 
         gates = self.gate(x)
-
         if self.training:
             def softplus(x):
                 return mx.log(1 + mx.exp(x))
@@ -174,36 +174,30 @@ class MixtralSparseMoeBlock(nn.Module):
             noise = mx.random.normal(shape=noise_logits.shape, dtype=noise_logits.dtype) * softplus(noise_logits)                           
             gates = gates + noise
 
-        scores = mx.softmax(gates.astype(mx.float32), axis=-1)
-        inverted_scores = 1 - scores
-        sorted_indices = mx.argsort(inverted_scores, axis=-1) # slower than argpartition but may not throw back prop errors ?
-        topk_indices = sorted_indices[:, :ne]
+        inds = mx.argpartition(-gates, kth=ne, axis=-1)[:, :ne]
+
+        scores = mx.softmax(
+            mx.take_along_axis(gates, inds, axis=-1).astype(mx.float32),
+            axis=-1,
+        ).astype(gates.dtype)
 
         if self.training:
+            mx.eval(inds)
+            inds = np.array(inds)
             y = mx.zeros((x.shape[0], ne, x.shape[-1]))
             for e, expert in enumerate(self.experts):
-                idx1, idx2 = map(mx.array, np.where(topk_indices == e))
+                idx1, idx2 = map(mx.array, np.where(inds == e))
                 if idx1.size == 0:
                     continue
                 y[idx1, idx2] = expert(x[idx1])
 
-            adjusted_scores = mx.take_along_axis(scores, topk_indices, axis=-1)
-            adjusted_scores = adjusted_scores[:, :, None]
-
-            y = (y * adjusted_scores).sum(axis=1)
+            y = (y * scores[:, :, None]).sum(axis=1)
         else:
             y = []
-            for xt, st in zip(x, scores):
-                topk_indices = mx.argsort(st, axis=-1)[-ne:]
-
-                topk_indices_list = topk_indices.tolist()
-
-                yt = mx.concatenate([self.experts[e](xt)[:, None] for e in topk_indices_list], axis=-1)
-
-                st_reshaped = st[topk_indices].reshape(1, -1)
-
-                yt_weighted = (yt * st_reshaped).sum(axis=-1)
-                y.append(yt_weighted[None, :])
+            for xt, st, it in zip(x, scores, inds.tolist()):
+                yt = mx.concatenate([self.experts[e](xt)[:, None] for e in it], axis=-1)
+                yt = (yt * st).sum(axis=-1)
+                y.append(yt[None, :])
             y = mx.concatenate(y)
 
         return y.reshape(orig_shape)
