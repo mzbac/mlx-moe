@@ -187,10 +187,10 @@ class MixtralSparseMoeBlock(nn.Module):
                     continue
                 y[idx1, idx2] = expert(x[idx1])
 
-            adjusted_scores = mx.take_along_axis(scores, topk_indices, axis=-1)
-            adjusted_scores = adjusted_scores[:, :, None]
+            top_k_scores = mx.take_along_axis(scores, topk_indices, axis=-1)
+            top_k_scores = top_k_scores[:, :, None]
 
-            y = (y * adjusted_scores).sum(axis=1)
+            y = (y * top_k_scores).sum(axis=1)
         else:
             y = []
             for xt, st in zip(x, scores):
