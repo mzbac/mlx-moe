@@ -182,8 +182,6 @@ class MixtralSparseMoeBlock(nn.Module):
         ).astype(gates.dtype)
 
         if self.training:
-            mx.eval(inds)
-            inds = np.array(inds)
             y = mx.zeros((x.shape[0], ne, x.shape[-1]))
             for e, expert in enumerate(self.experts):
                 idx1, idx2 = map(mx.array, np.where(inds == e))
