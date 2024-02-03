@@ -71,22 +71,23 @@ def main():
             l.block_sparse_moe.gate, r=16, lora_alpha=32, lora_dropout=0.1
         )
         
-        for i in range(len(l.block_sparse_moe.experts)):
-            l.block_sparse_moe.experts[i].w1 = LoRALinear.from_linear(
-                l.block_sparse_moe.experts[i].w1,
-                r=16,
-                lora_alpha=32,
-            )
-            l.block_sparse_moe.experts[i].w2 = LoRALinear.from_linear(
-                l.block_sparse_moe.experts[i].w2,
-                r=16,
-                lora_alpha=32,
-            )
-            l.block_sparse_moe.experts[i].w3 = LoRALinear.from_linear(
-                l.block_sparse_moe.experts[i].w3,
-                r=16,
-                lora_alpha=32,
-            )
+        # mlx doesn't have a pytorch like topk at the moment, skip the fine-tune experts mlp for now
+        # for i in range(len(l.block_sparse_moe.experts)):
+        #     l.block_sparse_moe.experts[i].w1 = LoRALinear.from_linear(
+        #         l.block_sparse_moe.experts[i].w1,
+        #         r=16,
+        #         lora_alpha=32,
+        #     )
+        #     l.block_sparse_moe.experts[i].w2 = LoRALinear.from_linear(
+        #         l.block_sparse_moe.experts[i].w2,
+        #         r=16,
+        #         lora_alpha=32,
+        #     )
+        #     l.block_sparse_moe.experts[i].w3 = LoRALinear.from_linear(
+        #         l.block_sparse_moe.experts[i].w3,
+        #         r=16,
+        #         lora_alpha=32,
+        #     )
 
     p = sum(v.size for _, v in tree_flatten(model.parameters())) / 10**6
     print(f"Total parameters {p:.3f}M")
