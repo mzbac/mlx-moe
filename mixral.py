@@ -6,8 +6,9 @@ import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
 
+
 @dataclass
-class ModelArgs():
+class ModelArgs:
     vocab_size: int = 32000
     max_position_embeddings: int = 4096 * 32
     hidden_size: int = 4096
@@ -37,6 +38,7 @@ class ModelArgs():
                 if k in inspect.signature(cls).parameters
             }
         )
+
 
 class RMSNorm(nn.Module):
     def __init__(self, dims: int, eps: float = 1e-5):
@@ -155,7 +157,7 @@ class MixtralSparseMoeBlock(nn.Module):
 
         # gating
         self.gate = nn.Linear(self.hidden_dim, self.num_experts, bias=False)
-        self._noise_linear =nn.Linear(self.hidden_dim, self.num_experts,bias=False)
+        self._noise_linear = nn.Linear(self.hidden_dim, self.num_experts, bias=False)
 
         self.experts = [
             MixtralBLockSparseTop2MLP(args=args) for _ in range(self.num_experts)
@@ -168,13 +170,17 @@ class MixtralSparseMoeBlock(nn.Module):
 
         gates = self.gate(x)
         if self.training:
+
             def softplus(x):
                 return mx.log(1 + mx.exp(x))
+
             noise_logits = self._noise_linear(x)
-            noise = mx.random.normal(shape=noise_logits.shape, dtype=noise_logits.dtype) * softplus(noise_logits)                           
+            noise = mx.random.normal(
+                shape=noise_logits.shape, dtype=noise_logits.dtype
+            ) * softplus(noise_logits)
             gates = gates + noise
 
-        inds = mx.argpartition(-gates, kth=ne, axis=-1)[:, :ne]
+        inds = mx.stop_gradient(mx.argpartition(-gates,kth=ne, axis=-1))[:, :ne]
 
         scores = mx.softmax(
             mx.take_along_axis(gates, inds, axis=-1).astype(mx.float32),
