@@ -8,7 +8,7 @@ from utils import load
 DEFAULT_MODEL_PATH = "mlx_model"
 DEFAULT_PROMPT = "hello"
 DEFAULT_MAX_TOKENS = 100
-DEFAULT_TEMP = 0.6
+DEFAULT_TEMP = 0.3
 DEFAULT_SEED = 0
 
 

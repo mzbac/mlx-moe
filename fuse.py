@@ -8,8 +8,8 @@ from mlx.utils import tree_flatten, tree_unflatten
 import mlx.core as mx
 from mlx_lm.tuner.lora import LoRALinear
 from mlx_lm.tuner.utils import apply_lora_layers, dequantize
-from mlx_lm.utils import get_model_path, save_weights, upload_to_hub
-from utils import fetch_from_hub
+from mlx_lm.utils import get_model_path,  upload_to_hub
+from utils import fetch_from_hub, save_weights
 
 
 def parse_arguments() -> argparse.Namespace:

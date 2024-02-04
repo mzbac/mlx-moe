@@ -9,8 +9,8 @@ from mlx.utils import tree_flatten
 
 import mlx.core as mx
 import mlx.nn as nn
-from mlx_lm.utils import get_model_path, save_weights
-from utils import load
+from mlx_lm.utils import get_model_path
+from utils import load, save_weights
 
 def configure_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -39,7 +39,8 @@ def quantize_model(
     quantized_config = copy.deepcopy(config)
 
     nn.QuantizedLinear.quantize_module(
-        model, q_group_size, q_bits, linear_class_predicate=lambda m: isinstance(m, nn.Linear) and m.weight.shape[0] != config['num_local_experts']
+        model, q_group_size, q_bits, 
+        linear_class_predicate=lambda m: isinstance(m, nn.Linear) and m.weight.shape[0] != config['num_local_experts']
     )
     quantized_config["quantization"] = {"group_size": q_group_size, "bits": q_bits}
     quantized_weights = dict(tree_flatten(model.parameters()))

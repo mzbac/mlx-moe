@@ -7,7 +7,6 @@ import mlx.optimizers as optim
 from utils import load
 import json
 from pathlib import Path
-import mlx.core as mx
 
 
 class Dataset:
@@ -31,7 +30,7 @@ def load_dataset(path: str, train_split: float = 0.8) -> Tuple[Dataset, Dataset]
         data = json.loads(file_content)
 
     combined_data = [
-        f'[INST] {{ {item["instruction"]} }} [/INST] {{ {item["output"]} }} '
+        f'Instruct: {item["instruction"]}\nOutput: {item["output"]}'
         for item in data
     ]
 
@@ -59,35 +58,13 @@ def main():
     train_dst, valid_dst = load_dataset(train_dataset_path)
 
     model.freeze()
-    # Fine-tune different layers to see the best layer for fine-tuning
     for l in model.model.layers:
-        l.self_attn.q_proj = LoRALinear.from_linear(
-            l.self_attn.q_proj, r=16, lora_alpha=32, lora_dropout=0.1
-        )
-        l.self_attn.v_proj = LoRALinear.from_linear(
-            l.self_attn.v_proj, r=16, lora_alpha=32, lora_dropout=0.1
-        )
-        l.block_sparse_moe.gate= LoRALinear.from_linear(
-            l.block_sparse_moe.gate, r=16, lora_alpha=32, lora_dropout=0.1
-        )
-        
-        # mlx doesn't have a pytorch like topk at the moment, skip the fine-tune experts mlp for now
-        # for i in range(len(l.block_sparse_moe.experts)):
-        #     l.block_sparse_moe.experts[i].w1 = LoRALinear.from_linear(
-        #         l.block_sparse_moe.experts[i].w1,
-        #         r=16,
-        #         lora_alpha=32,
-        #     )
-        #     l.block_sparse_moe.experts[i].w2 = LoRALinear.from_linear(
-        #         l.block_sparse_moe.experts[i].w2,
-        #         r=16,
-        #         lora_alpha=32,
-        #     )
-        #     l.block_sparse_moe.experts[i].w3 = LoRALinear.from_linear(
-        #         l.block_sparse_moe.experts[i].w3,
-        #         r=16,
-        #         lora_alpha=32,
-        #     )
+        l.self_attn.q_proj = LoRALinear.from_linear(l.self_attn.q_proj, r=16, lora_alpha=32)
+        l.self_attn.v_proj = LoRALinear.from_linear(l.self_attn.v_proj, r=16, lora_alpha=32)
+        l.block_sparse_moe.gate = LoRALinear.from_linear(l.block_sparse_moe.gate, r=16, lora_alpha=32)
+
+    # resume training from a checkpoint
+    model.load_weights('adapters.npz', strict=False)
 
     p = sum(v.size for _, v in tree_flatten(model.parameters())) / 10**6
     print(f"Total parameters {p:.3f}M")
@@ -95,9 +72,9 @@ def main():
     print(f"Trainable parameters {p:.3f}M")
 
     trainingArgs = TrainingArgs(
-        batch_size=2,
+        batch_size=1,
         iters=9000,
-        val_batches=1,
+        val_batches=10,
         steps_per_report=10,
         steps_per_eval=200,
         steps_per_save=200,
@@ -106,7 +83,7 @@ def main():
     )
 
     model.train()
-    opt = optim.AdamW(learning_rate=1e-7)
+    opt = optim.Adam(learning_rate=1e-6)
 
     train(
         model=model,

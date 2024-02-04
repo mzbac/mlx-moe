@@ -2,13 +2,13 @@ import glob
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 import mlx.core as mx
 import mlx.nn as nn
-from mlx_lm.utils import get_model_path
+from mlx_lm.utils import get_model_path, make_shards
 from mlx_lm.tuner.utils import apply_lora_layers, tree_unflatten
 from transformers import AutoConfig, AutoTokenizer, PreTrainedTokenizer
-from mixral import ModelArgs, Model
+from phi2moe import ModelArgs, Model
 
 
 def load_weights(model_path: str):
@@ -67,6 +67,7 @@ def load_model(model_path: Path) -> nn.Module:
             ],  # avoid quantizing gate layers, otherwise we have to re-quant and upload all the mixtral models
         )
 
+    # print(weights.keys())
     model.load_weights(list(weights.items()))
 
     mx.eval(model.parameters())
@@ -84,3 +85,30 @@ def fetch_from_hub(
     tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     return model, config.to_dict(), tokenizer
+
+def save_weights(save_path: Union[str, Path], weights: Dict[str, Any]) -> None:
+    if isinstance(save_path, str):
+        save_path = Path(save_path)
+    save_path.mkdir(parents=True, exist_ok=True)
+
+    shards = make_shards(weights)
+    shards_count = len(shards)
+    shard_file_format = "model-{:05d}-of-{:05d}.safetensors" if shards_count > 1 else "model.safetensors"
+
+    index_data = {"metadata": {"total_size": 0}, "weight_map": {}}
+
+    for i, shard in enumerate(shards):
+        shard_name = shard_file_format.format(i + 1, shards_count)
+        shard_path = save_path / shard_name
+        
+        mx.save_safetensors(str(shard_path), shard)
+
+        for tensor_name in shard.keys():
+            index_data["weight_map"][tensor_name] = shard_name
+
+        index_data["metadata"]["total_size"] += shard_path.stat().st_size
+
+    sorted_weight_map = {k: index_data["weight_map"][k] for k in sorted(index_data["weight_map"])}
+    
+    with open(save_path / 'model.safetensors.index.json', 'w') as f:
+        json.dump({"metadata": index_data["metadata"], "weight_map": sorted_weight_map}, f, indent=4)

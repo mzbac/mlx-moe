@@ -1,17 +1,25 @@
 import json
 from pathlib import Path
-from mlx_lm.utils import save_weights, get_model_path
+from mlx_lm.utils import  get_model_path
 from transformers import AutoTokenizer
-from utils import load_weights
+from utils import load_weights, save_weights
 import mlx.nn as nn
 
 # Paths for expert models, the first one is also used as the base model
 EXPERT_MODEL_PATHS = [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "mistralai/Mistral-7B-v0.1",
-    "berkeley-nest/Starling-LM-7B-alpha",
-    "mistralai/Mistral-7B-Instruct-v0.1",
+    "microsoft/phi-2",
+    "g-ronimo/phi-2-OpenHermes-2.5",
+    "mlx-community/phi-2-dpo-7k"
 ]
+
+# Update configuration based on the number of expert models
+config_update = {
+    "num_local_experts": len(EXPERT_MODEL_PATHS),
+    "num_experts_per_tok": 2,
+    "model_type": "phixtral",
+    "architectures": ["PhixtralForCausalLM"],
+}
+
 MLX_SAVE_PATH = Path("mlx_moe")
 
 
@@ -40,22 +48,17 @@ def update_weights(expert_weights, config):
             weights[n] = v
 
     for i in range(config["num_hidden_layers"]):
-        # initialize gate weights with uniform distribution which will be updated during lora fine-tuning
+        # Initialize gate weights
         weights[f"model.layers.{i}.block_sparse_moe.gate.weight"] = nn.Linear(
             config["hidden_size"], config["num_local_experts"], bias=False
         ).weight
 
         for idx, e_w in enumerate(expert_weights):
             base_path = f"model.layers.{i}.block_sparse_moe.experts.{idx}"
-            weights[f"{base_path}.w1.weight"] = e_w[
-                f"model.layers.{i}.mlp.gate_proj.weight"
-            ]
-            weights[f"{base_path}.w2.weight"] = e_w[
-                f"model.layers.{i}.mlp.down_proj.weight"
-            ]
-            weights[f"{base_path}.w3.weight"] = e_w[
-                f"model.layers.{i}.mlp.up_proj.weight"
-            ]
+            weights[f"{base_path}.fc1.weight"] = e_w[f"model.layers.{i}.mlp.fc1.weight"]
+            weights[f"{base_path}.fc2.weight"] = e_w[f"model.layers.{i}.mlp.fc2.weight"]
+            weights[f"{base_path}.fc1.bias"] = e_w[f"model.layers.{i}.mlp.fc1.bias"]
+            weights[f"{base_path}.fc2.bias"] = e_w[f"model.layers.{i}.mlp.fc2.bias"]
 
     return weights
 
@@ -66,15 +69,7 @@ def main():
     config = load_config(get_model_path(EXPERT_MODEL_PATHS[0]) / "config.json")
     tokenizer = AutoTokenizer.from_pretrained(get_model_path(EXPERT_MODEL_PATHS[0]))
 
-    # Update configuration
-    config.update(
-        {
-            "num_local_experts": 4,
-            "num_experts_per_tok": 2,
-            "model_type": "mixtral",
-            "architectures": ["MixtralForCausalLM"],
-        }
-    )
+    config.update(config_update)
 
     weights = update_weights(expert_weights, config)
 
