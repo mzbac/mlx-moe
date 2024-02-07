@@ -61,8 +61,6 @@ def main() -> None:
 
     model.freeze()
     model = apply_lora_layers(model, args.adapter_file)
-    adapters = list(mx.load(args.adapter_file).items())
-    model.update(tree_unflatten(adapters))
     
     fused_linears = [
         (n, m.to_linear())
@@ -82,7 +80,7 @@ def main() -> None:
 
     if not args.de_quantize:
         mlx_lm_save_weights(save_path, weights)
-    else:    
+    else:
         save_weights(save_path, weights)
 
     py_files = glob.glob(str(model_path / "*.py"))
