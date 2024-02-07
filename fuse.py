@@ -8,8 +8,8 @@ from mlx.utils import tree_flatten, tree_unflatten
 import mlx.core as mx
 from mlx_lm.tuner.lora import LoRALinear
 from mlx_lm.tuner.utils import apply_lora_layers, dequantize
-from mlx_lm.utils import get_model_path,  upload_to_hub
-from utils import fetch_from_hub, save_weights
+from mlx_lm.utils import get_model_path,  upload_to_hub, save_weights as mlx_lm_save_weights
+from utils import save_weights, load
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -55,7 +55,9 @@ def main() -> None:
     args = parse_arguments()
 
     model_path = get_model_path(args.model)
-    model, config, tokenizer = fetch_from_hub(model_path)
+    model, tokenizer = load(model_path)
+    with open(model_path/"config.json", "r") as file:
+        config = json.load(file)
 
     model.freeze()
     model = apply_lora_layers(model, args.adapter_file)
@@ -78,7 +80,10 @@ def main() -> None:
 
     save_path = Path(args.save_path)
 
-    save_weights(save_path, weights)
+    if not args.de_quantize:
+        mlx_lm_save_weights(save_path, weights)
+    else:    
+        save_weights(save_path, weights)
 
     py_files = glob.glob(str(model_path / "*.py"))
     for file in py_files:

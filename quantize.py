@@ -9,8 +9,8 @@ from mlx.utils import tree_flatten
 
 import mlx.core as mx
 import mlx.nn as nn
-from mlx_lm.utils import get_model_path
-from utils import load, save_weights
+from mlx_lm.utils import get_model_path, save_weights
+from utils import load
 
 def configure_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

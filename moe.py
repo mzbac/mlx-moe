@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 from mlx_lm.utils import  get_model_path
 from transformers import AutoTokenizer
 from utils import load_weights, save_weights
@@ -16,8 +17,8 @@ EXPERT_MODEL_PATHS = [
 config_update = {
     "num_local_experts": len(EXPERT_MODEL_PATHS),
     "num_experts_per_tok": 2,
-    "model_type": "phixtral",
-    "architectures": ["PhixtralForCausalLM"],
+    "model_type": "phi2moe",
+    "architectures": ["Phi2MoeForCausalLM"],
 }
 
 MLX_SAVE_PATH = Path("mlx_moe")
@@ -76,7 +77,8 @@ def main():
     tokenizer.save_pretrained(MLX_SAVE_PATH)
     save_weights(MLX_SAVE_PATH, weights=weights)
     save_config(config, MLX_SAVE_PATH / "config.json")
-
+    shutil.copy('configuration_phi.py',MLX_SAVE_PATH)
+    shutil.copy('modeling_phi.py',MLX_SAVE_PATH)
 
 if __name__ == "__main__":
     main()

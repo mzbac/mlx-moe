@@ -83,7 +83,7 @@ def main():
     )
 
     model.train()
-    opt = optim.Adam(learning_rate=1e-6)
+    opt = optim.Adam(learning_rate=1e-5)
 
     train(
         model=model,
