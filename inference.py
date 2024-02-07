@@ -45,8 +45,8 @@ def setup_arg_parser():
 def main(args):
     mx.random.seed(args.seed)
 
-    model, tokenizer = load(args.model, adapter_file=args.adapter_file)
-
+    model, tokenizer = load(args.model, adapter_file=args.adapter_file, tokenizer_config={ "eos_token": "<|im_end|>"})
+    
     prompt = args.prompt
 
     generate(

@@ -30,7 +30,7 @@ def load_dataset(path: str, train_split: float = 0.8) -> Tuple[Dataset, Dataset]
         data = json.loads(file_content)
 
     combined_data = [
-        f'Instruct: {item["instruction"]}\nOutput: {item["output"]}'
+        f'<|im_start|>user\n{item["instruction"]}<|im_end|>\n<|im_start|>assistant\n{item["output"]}<|im_end|>'
         for item in data
     ]
 

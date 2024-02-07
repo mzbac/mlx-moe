@@ -7,17 +7,17 @@ import mlx.nn as nn
 
 # Paths for expert models, the first one is also used as the base model
 EXPERT_MODEL_PATHS = [
-    "microsoft/phi-2",
-    "g-ronimo/phi-2-OpenHermes-2.5",
-    "mlx-community/phi-2-dpo-7k"
+    "Qwen/Qwen1.5-7B-Chat",
+    "Qwen/Qwen1.5-7B",
+    "Qwen/Qwen1.5-7B"
 ]
 
 # Update configuration based on the number of expert models
 config_update = {
     "num_local_experts": len(EXPERT_MODEL_PATHS),
     "num_experts_per_tok": 2,
-    "model_type": "phixtral",
-    "architectures": ["PhixtralForCausalLM"],
+    "model_type": "qwen2-moe",
+    "architectures": ["Qwen2MoeForCausalLM"],
 }
 
 MLX_SAVE_PATH = Path("mlx_moe")
@@ -55,10 +55,16 @@ def update_weights(expert_weights, config):
 
         for idx, e_w in enumerate(expert_weights):
             base_path = f"model.layers.{i}.block_sparse_moe.experts.{idx}"
-            weights[f"{base_path}.fc1.weight"] = e_w[f"model.layers.{i}.mlp.fc1.weight"]
-            weights[f"{base_path}.fc2.weight"] = e_w[f"model.layers.{i}.mlp.fc2.weight"]
-            weights[f"{base_path}.fc1.bias"] = e_w[f"model.layers.{i}.mlp.fc1.bias"]
-            weights[f"{base_path}.fc2.bias"] = e_w[f"model.layers.{i}.mlp.fc2.bias"]
+            weights[f"{base_path}.gate_proj.weight"] = e_w[
+                f"model.layers.{i}.mlp.gate_proj.weight"
+            ]
+            weights[f"{base_path}.down_proj.weight"] = e_w[
+                f"model.layers.{i}.mlp.down_proj.weight"
+            ]
+            weights[f"{base_path}.up_proj.weight"] = e_w[
+                f"model.layers.{i}.mlp.up_proj.weight"
+            ]
+
 
     return weights
 

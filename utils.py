@@ -8,7 +8,7 @@ import mlx.nn as nn
 from mlx_lm.utils import get_model_path, make_shards
 from mlx_lm.tuner.utils import apply_lora_layers, tree_unflatten
 from transformers import AutoConfig, AutoTokenizer, PreTrainedTokenizer
-from phi2moe import ModelArgs, Model
+from qwen2moe import ModelArgs, Model
 
 
 def load_weights(model_path: str):

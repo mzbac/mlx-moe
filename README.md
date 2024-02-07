@@ -39,7 +39,7 @@ python lora.py
 
 **Inference**: Use the `inference.py` script to run inference on the fine-tuned model. This script will load the model and tokenizer from the `mlx_model` directory and run inference on the given input prompt.
 ```python
-python inference.py --model mlx_model --adapter-file adapters.npz --prompt "Instruct: write a quick sort in python.\nOutput:" -m 2000
+python inference.py --model mlx_model --adapter-file adapters.npz --prompt "<|im_start|>user\nhow backpropagation works<|im_end|>\n<|im_start|>assistant\n" -m 2000
 ```
 
 ## Fuse model
