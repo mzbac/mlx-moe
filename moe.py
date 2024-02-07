@@ -9,7 +9,7 @@ import mlx.nn as nn
 EXPERT_MODEL_PATHS = [
     "Qwen/Qwen1.5-7B-Chat",
     "Qwen/Qwen1.5-7B",
-    "Qwen/Qwen1.5-7B"
+    "Crystalcareai/CrystalQwen-1.5-7B"
 ]
 
 # Update configuration based on the number of expert models
