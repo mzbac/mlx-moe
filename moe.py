@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 import shutil
-from mlx_lm.utils import  get_model_path
+from mlx_lm.utils import get_model_path
 from transformers import AutoTokenizer
 from utils import load_weights, save_weights
 import mlx.nn as nn
@@ -10,7 +10,7 @@ import mlx.nn as nn
 EXPERT_MODEL_PATHS = [
     "microsoft/phi-2",
     "g-ronimo/phi-2-OpenHermes-2.5",
-    "mlx-community/phi-2-dpo-7k"
+    "mlx-community/phi-2-dpo-7k",
 ]
 
 # Update configuration based on the number of expert models
@@ -19,6 +19,7 @@ config_update = {
     "num_experts_per_tok": 2,
     "model_type": "phi2moe",
     "architectures": ["Phi2MoeForCausalLM"],
+    "torch_dtype": "bfloat16",
 }
 
 MLX_SAVE_PATH = Path("mlx_moe")
@@ -77,8 +78,9 @@ def main():
     tokenizer.save_pretrained(MLX_SAVE_PATH)
     save_weights(MLX_SAVE_PATH, weights=weights)
     save_config(config, MLX_SAVE_PATH / "config.json")
-    shutil.copy('configuration_phi.py',MLX_SAVE_PATH)
-    shutil.copy('modeling_phi.py',MLX_SAVE_PATH)
+    shutil.copy("configuration_phi.py", MLX_SAVE_PATH)
+    shutil.copy("modeling_phi.py", MLX_SAVE_PATH)
+
 
 if __name__ == "__main__":
     main()
