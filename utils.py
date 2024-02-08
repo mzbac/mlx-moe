@@ -2,13 +2,17 @@ import glob
 import json
 import logging
 from pathlib import Path
+import re
 from typing import Any, Dict, Tuple, Union
 import mlx.core as mx
 import mlx.nn as nn
 from mlx_lm.utils import get_model_path, make_shards
 from mlx_lm.tuner.utils import apply_lora_layers, tree_unflatten
+import numpy as np
+import torch
 from transformers import AutoConfig, AutoTokenizer, PreTrainedTokenizer
 from qwen2moe import ModelArgs, Model
+from safetensors.torch import save_file
 
 
 def load_weights(model_path: str):
@@ -86,6 +90,25 @@ def fetch_from_hub(
 
     return model, config.to_dict(), tokenizer
 
+def dtype_byte_size(dtype):
+    """
+    Returns the size (in bytes) occupied by one parameter of type `dtype`.
+
+    Example:
+
+    ```py
+    >>> dtype_byte_size(torch.float32)
+    4
+    ```
+    """
+    if dtype == torch.bool:
+        return 1 / 8
+    bit_search = re.search(r"[^\d](\d+)$", str(dtype))
+    if bit_search is None:
+        raise ValueError(f"`dtype` is not a valid dtype: {dtype}.")
+    bit_size = int(bit_search.groups()[0])
+    return bit_size // 8
+
 def save_weights(save_path: Union[str, Path], weights: Dict[str, Any]) -> None:
     if isinstance(save_path, str):
         save_path = Path(save_path)
@@ -95,18 +118,22 @@ def save_weights(save_path: Union[str, Path], weights: Dict[str, Any]) -> None:
     shards_count = len(shards)
     shard_file_format = "model-{:05d}-of-{:05d}.safetensors" if shards_count > 1 else "model.safetensors"
 
-    index_data = {"metadata": {"total_size": 0}, "weight_map": {}}
+    total_size = sum(v.nbytes for v in weights.values())
+    index_data = {"metadata": {"total_size": total_size}, "weight_map": {}}
 
     for i, shard in enumerate(shards):
         shard_name = shard_file_format.format(i + 1, shards_count)
         shard_path = save_path / shard_name
         
-        mx.save_safetensors(str(shard_path), shard)
+        shard = { k: np.array(v.astype(mx.float32)) for k, v in shard.items()}
+        shard = { k: torch.from_numpy(v).to(dtype=torch.bfloat16) for k, v in shard.items()}
+
+        save_file(shard, str(shard_path), metadata={"format": "pt"})
+        # mx.save_safetensors(str(shard_path), shard)
 
         for tensor_name in shard.keys():
             index_data["weight_map"][tensor_name] = shard_name
 
-        index_data["metadata"]["total_size"] += shard_path.stat().st_size
 
     sorted_weight_map = {k: index_data["weight_map"][k] for k in sorted(index_data["weight_map"])}
     

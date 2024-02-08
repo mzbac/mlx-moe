@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from mlx_lm.utils import  get_model_path
+import shutil
+from mlx_lm.utils import get_model_path
 from transformers import AutoTokenizer
 from utils import load_weights, save_weights
 import mlx.nn as nn
@@ -9,7 +10,7 @@ import mlx.nn as nn
 EXPERT_MODEL_PATHS = [
     "Qwen/Qwen1.5-7B-Chat",
     "Qwen/Qwen1.5-7B",
-    "Crystalcareai/CrystalQwen-1.5-7B"
+    "Crystalcareai/CrystalQwen-1.5-7B",
 ]
 
 # Update configuration based on the number of expert models
@@ -18,6 +19,10 @@ config_update = {
     "num_experts_per_tok": 2,
     "model_type": "qwen2-moe",
     "architectures": ["Qwen2MoeForCausalLM"],
+    "auto_map": {
+        "AutoConfig": "configuration_qwen2.Qwen2Config",
+        "AutoModelForCausalLM": "modeling_qwen2.Qwen2ForCausalLM",
+    },
 }
 
 MLX_SAVE_PATH = Path("mlx_moe")
@@ -65,7 +70,6 @@ def update_weights(expert_weights, config):
                 f"model.layers.{i}.mlp.up_proj.weight"
             ]
 
-
     return weights
 
 
@@ -82,7 +86,8 @@ def main():
     tokenizer.save_pretrained(MLX_SAVE_PATH)
     save_weights(MLX_SAVE_PATH, weights=weights)
     save_config(config, MLX_SAVE_PATH / "config.json")
-
+    shutil.copy("configuration_qwen2.py", MLX_SAVE_PATH)
+    shutil.copy("modeling_qwen2.py", MLX_SAVE_PATH)
 
 if __name__ == "__main__":
     main()
