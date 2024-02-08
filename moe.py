@@ -17,7 +17,7 @@ EXPERT_MODEL_PATHS = [
 config_update = {
     "num_local_experts": len(EXPERT_MODEL_PATHS),
     "num_experts_per_tok": 2,
-    "model_type": "qwen2-moe",
+    "model_type": "qwen2moe",
     "architectures": ["Qwen2MoeForCausalLM"],
     "auto_map": {
         "AutoConfig": "configuration_qwen2.Qwen2Config",
