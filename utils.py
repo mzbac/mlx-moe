@@ -109,7 +109,7 @@ def dtype_byte_size(dtype):
     bit_size = int(bit_search.groups()[0])
     return bit_size // 8
 
-def save_weights(save_path: Union[str, Path], weights: Dict[str, Any]) -> None:
+def save_weights(save_path: Union[str, Path], weights: Dict[str, Any], save_as_pt:bool = False) -> None:
     if isinstance(save_path, str):
         save_path = Path(save_path)
     save_path.mkdir(parents=True, exist_ok=True)
@@ -125,10 +125,14 @@ def save_weights(save_path: Union[str, Path], weights: Dict[str, Any]) -> None:
         shard_name = shard_file_format.format(i + 1, shards_count)
         shard_path = save_path / shard_name
         
-        shard = { k: np.array(v.astype(mx.float32)) for k, v in shard.items()}
-        shard = { k: torch.from_numpy(v).to(dtype=torch.bfloat16) for k, v in shard.items()}
+        if save_as_pt:
+            shard = { k: np.array(v.astype(mx.float32)) for k, v in shard.items()}
+            shard = { k: torch.from_numpy(v).to(dtype=torch.bfloat16) for k, v in shard.items()}
 
-        save_file(shard, str(shard_path), metadata={"format": "pt"})
+            save_file(shard, str(shard_path), metadata={"format": "pt"})
+        else:
+            mx.save_safetensors(str(shard_path), shard)
+
         for tensor_name in shard.keys():
             index_data["weight_map"][tensor_name] = shard_name
 

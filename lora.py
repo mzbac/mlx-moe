@@ -64,7 +64,7 @@ def main():
         l.block_sparse_moe.gate = LoRALinear.from_linear(l.block_sparse_moe.gate, r=16, lora_alpha=32)
 
     # resume training from a checkpoint
-    model.load_weights('adapters.npz', strict=False)
+    # model.load_weights('adapters.npz', strict=False)
 
     p = sum(v.size for _, v in tree_flatten(model.parameters())) / 10**6
     print(f"Total parameters {p:.3f}M")

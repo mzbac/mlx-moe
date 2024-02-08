@@ -81,7 +81,7 @@ def main() -> None:
     if not args.de_quantize:
         mlx_lm_save_weights(save_path, weights)
     else:
-        save_weights(save_path, weights)
+        save_weights(save_path, weights, save_as_pt=True)
 
     py_files = glob.glob(str(model_path / "*.py"))
     for file in py_files:
