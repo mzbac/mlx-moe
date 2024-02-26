@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 
 
+MAX_SEQ_LENGTH = 1024
+
 class Dataset:
     def __init__(self, data):
         self._data = data
@@ -20,7 +22,9 @@ class Dataset:
         return len(self._data)
 
 
-def load_dataset(path: str, train_split: float = 0.8) -> Tuple[Dataset, Dataset]:
+def load_dataset(
+    path: str, tokenizer, train_split: float = 0.8
+) -> Tuple[Dataset, Dataset]:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
@@ -29,10 +33,16 @@ def load_dataset(path: str, train_split: float = 0.8) -> Tuple[Dataset, Dataset]
         file_content = fid.read()
         data = json.loads(file_content)
 
-    combined_data = [
-        f'<|im_start|>user\n{item["instruction"]}<|im_end|>\n<|im_start|>assistant\n{item["output"]}<|im_end|>'
-        for item in data
-    ]
+    random.shuffle(data)
+
+    filtered_data = []
+    for item in data:
+        combined_text = f'<|im_start|>user\n{item["instruction"]}<|im_end|>\n<|im_start|>assistant\n{item["output"]}<|im_end|>'
+        token_count = len(tokenizer.tokenize(combined_text))
+        if token_count <= MAX_SEQ_LENGTH:
+            filtered_data.append(combined_text)
+
+    combined_data = filtered_data[:5000]
 
     random.shuffle(combined_data)
 
@@ -55,13 +65,25 @@ def main():
 
     model, tokenizer = load(model_path)
 
-    train_dst, valid_dst = load_dataset(train_dataset_path)
+    train_dst, valid_dst = load_dataset(train_dataset_path, tokenizer)
 
     model.freeze()
+    model.lm_head = LoRALinear.from_linear(model.lm_head, r=64, lora_alpha=128)
     for l in model.model.layers:
-        l.self_attn.q_proj = LoRALinear.from_linear(l.self_attn.q_proj, r=16, lora_alpha=32)
-        l.self_attn.v_proj = LoRALinear.from_linear(l.self_attn.v_proj, r=16, lora_alpha=32)
-        l.block_sparse_moe.gate = LoRALinear.from_linear(l.block_sparse_moe.gate, r=16, lora_alpha=32)
+        l.self_attn.q_proj = LoRALinear.from_linear(
+            l.self_attn.q_proj, r=64, lora_alpha=128
+        )
+        l.self_attn.v_proj = LoRALinear.from_linear(
+            l.self_attn.v_proj, r=64, lora_alpha=128
+        )
+        l.block_sparse_moe.gate = LoRALinear.from_linear(
+            l.block_sparse_moe.gate, r=64, lora_alpha=128
+        )
+
+        for e in l.block_sparse_moe.experts:
+            e.gate_proj = LoRALinear.from_linear(e.gate_proj, r=64, lora_alpha=128)
+            e.down_proj = LoRALinear.from_linear(e.down_proj, r=64, lora_alpha=128)
+            e.up_proj = LoRALinear.from_linear(e.up_proj, r=64, lora_alpha=128)
 
     # resume training from a checkpoint
     # model.load_weights('adapters.npz', strict=False)
@@ -73,13 +95,13 @@ def main():
 
     trainingArgs = TrainingArgs(
         batch_size=1,
-        iters=9000,
+        iters=5000,
         val_batches=10,
         steps_per_report=10,
         steps_per_eval=200,
         steps_per_save=200,
         adapter_file="adapters.npz",
-        max_seq_length=2048,
+        max_seq_length=MAX_SEQ_LENGTH,
     )
 
     model.train()
